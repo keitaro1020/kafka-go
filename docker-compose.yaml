@@ -1,0 +1,77 @@
+version: "3"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 32181
+
+  kafka:
+    image: confluentinc/cp-kafka
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:32181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_DOCKER_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_DOCKER_INTERNAL://localhost:9092
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - 29092:29092
+    depends_on:
+      - zookeeper
+
+  server:
+    build: .
+    tty: true
+    command: "go run cmd/server/main.go"
+    ports:
+      - "18080:8080"
+    volumes:
+      - .:/app
+    environment:
+      KAFKA_ADDR: "kafka:29092"
+      SEND_TOPIC: "service_topic"
+      RECEIVE_TOPIC: "server_topic"
+    depends_on:
+      - kafka
+
+  service1-1:
+    build: .
+    tty: true
+    command: "go run cmd/consumer/main.go"
+    volumes:
+      - .:/app
+    environment:
+      KAFKA_ADDR: "kafka:29092"
+      SEND_TOPIC: "server_topic"
+      RECEIVE_TOPIC: "service_topic"
+      CONSUMER_GROUP: "service1"
+    depends_on:
+      - kafka
+
+  service1-2:
+    build: .
+    tty: true
+    command: "go run cmd/consumer/main.go"
+    volumes:
+      - .:/app
+    environment:
+      KAFKA_ADDR: "kafka:29092"
+      SEND_TOPIC: "server_topic"
+      RECEIVE_TOPIC: "service_topic"
+      CONSUMER_GROUP: "service1"
+    depends_on:
+      - kafka
+
+  service2-1:
+    build: .
+    tty: true
+    command: "go run cmd/consumer/main.go"
+    volumes:
+      - .:/app
+    environment:
+      KAFKA_ADDR: "kafka:29092"
+      SEND_TOPIC: "server_topic"
+      RECEIVE_TOPIC: "service_topic"
+      CONSUMER_GROUP: "service2"
+    depends_on:
+      - kafka
